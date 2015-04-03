@@ -3,11 +3,14 @@
 While doing a phone screen a candidate mentioned one of their projects was a scheme interpreter.
 
 I thought that might be pretty easy, so in a few evenings of hacking, I came up with this. I didn't look at the actual scheme spec, so I kinda made a scheme-like language. But you can write pow in it. 
-Functions
- Arithmatic: +, -, * (no /, % yet)
- Comparison: <, >, =
- Flow: if, list
- Assignment: lambda, set
+
+Functions:
+
+* Arithmatic: +, -, * (no /, % yet)
+* Comparison: <, >, =
+* Flow: if, list
+*  Assignment: lambda, set
+   
 
 Types: int, string, function, list
 
