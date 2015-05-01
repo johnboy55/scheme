@@ -176,9 +176,15 @@ def scheme_parse(commands):
 
 while (1):
     line = raw_input("%s>" % len(GLOB_context))
-    if line.find("("):
+
+    if line.find("(") < 0:
         print GLOB_context
         continue
+    
     commands = scheme_parse(line)
-    evaluate(GLOB_context, commands)
+
+    try:
+        evaluate(GLOB_context, commands)
+    except KeyError:
+        print "Undefined variable or function used"
 
