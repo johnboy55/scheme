@@ -100,11 +100,12 @@ def c_print(context, vals):
 def c_lambda(commands, vals):
     params = vals[0]
     command = vals[1]
-    new_com = list(commands)
 
-    def func(new_com, vals):
+    def func(new_com2, vals):
+        new_com = new_com2.copy()
+
         for i, p in enumerate(params):
-            new_com[p] = evaluate(commands, vals[i])
+            new_com[p] = evaluate(new_com2, vals[i])
 
         return evaluate(new_com, command)
 
@@ -175,7 +176,9 @@ def scheme_parse(commands):
 
 while (1):
     line = raw_input("%s>" % len(GLOB_context))
-
+    if line.find("("):
+        print GLOB_context
+        continue
     commands = scheme_parse(line)
     evaluate(GLOB_context, commands)
 
