@@ -2,6 +2,8 @@ __author__ = 'john'
 
 import types
 
+from pyparsing import *
+
 
 def evaluate(context, val):
     if isinstance(val, list):
@@ -24,9 +26,10 @@ def evaluate(context, val):
         return val
 
     # I don't think I need this
-    if isinstance(context[val], types.FunctionType):
+    # if isinstance(context[val], types.FunctionType):
+    #    return context[val]
+    if val in context:
         return context[val]
-
     return evaluate(context, context[val])
 
 
@@ -48,6 +51,16 @@ def c_list(context, vals):
     return ret
 
 
+def c_car(context, vals):
+    tmp = evaluate(context, vals)
+    return tmp[0]
+
+
+def c_cdr(context, vals):
+    tmp = evaluate(context, vals)
+    return tmp[1:]
+
+
 # Comparison Operators
 def c_eq(context, vals):
     return 1 if evaluate(context, vals[0]) == evaluate(context, vals[1]) else 0
@@ -61,6 +74,10 @@ def c_lt(context, vals):
     return 1 if evaluate(context, vals[0]) < evaluate(context, vals[1]) else 0
 
 
+def c_ex(context, vals):
+    return 1 if len(vals[0]) > 0 else 0
+
+
 # Math Operators
 def c_minus(context, vals):
     tmp = evaluate(context, vals[0])
@@ -72,7 +89,11 @@ def c_minus(context, vals):
 def c_add(context, vals):
     tmp = 0
     for a in vals:
-        tmp += evaluate(context, a)
+        el = evaluate(context, a)
+        if isinstance(el, list):
+            tmp += c_add(context, el)
+        else:
+            tmp += el
     return tmp
 
 
@@ -81,6 +102,12 @@ def c_mult(context, vals):
     for a in vals:
         tmp *= evaluate(context, a)
     return tmp
+
+
+def c_div(context, vals):
+    tmp = evaluate(context, vals[0])
+    for a in vals[1:]:
+        tmp /= evaluate(context, a)
 
 
 def c_set_var(context, vals):
@@ -111,21 +138,35 @@ def c_lambda(commands, vals):
 
     return func
 
+
+def c_cat(commands, vals):
+    return commands.keys()
+
+
+def c_nop(commands, vals):
+    return evaluate(commands, vals)
+
+
 GLOB_context = {'+': c_add,
-                 '-': c_minus,
-                 '*': c_mult,
-                 'set': c_set_var,
-                 'list': c_list,
-                 'print': c_print,
-                 'lambda': c_lambda,
-                 'if': c_if,
-                 '>': c_gt,
-                 '<': c_lt,
-                 '=': c_eq}
+                '-': c_minus,
+                '*': c_mult,
+                '/': c_div,
+                'set': c_set_var,
+                'list': c_list,
+                'print': c_print,
+                'lambda': c_lambda,
+                'if': c_if,
+                '>': c_gt,
+                '<': c_lt,
+                '=': c_eq,
+                'cdr': c_cdr,
+                'car': c_car,
+                'notnull': c_eq,
+                'cat': c_cat,
+                "!": c_nop}
 
 # Returns a complete command array
 def parse(phrase):
-
     if len(phrase) == 0:
         return []
 
@@ -169,6 +210,21 @@ def parse(phrase):
     return command
 
 
+def scheme_parse_re(commands):
+    exp = Forward()
+
+    number = Word(nums).setResultsName('int', True).setParseAction(lambda s, l, t: int(t[0]))
+    lparen = Literal('(').suppress()
+    rparen = Literal(')').suppress()
+    varname = Word(alphanums).setResultsName('var')
+    op = Word(printables).setResultsName('op')  # .setParseAction(lambda s, l, t: op_map[t[0]])
+    string = QuotedString("'").setName('str')
+    exp << Group(lparen + op('op') + OneOrMore(number('int') ^ exp ^ varname ^ string("string")) + rparen)
+
+    a = exp.parseString(commands)
+    return a
+
+
 def scheme_parse(commands):
     '''Need to work in reverse order'''
     return parse(commands.split(' ')[::-1])
@@ -180,11 +236,17 @@ while (1):
     if line.find("(") < 0:
         print GLOB_context
         continue
-    
-    commands = scheme_parse(line)
-
+    commands = None
     try:
-        evaluate(GLOB_context, commands)
-    except KeyError:
-        print "Undefined variable or function used"
+        commands = scheme_parse_re(line).asList()
+    except ParseException, e:
+        print "Syntax error at position %d:\n%s" % (e.col, e.line)
+        print (" " * (e.col - 1)) + "^"
+        print e.msg
+
+    if commands:
+        try:
+            evaluate(GLOB_context, commands)
+        except KeyError:
+            print "Undefined variable or function used"
 
